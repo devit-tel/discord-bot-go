@@ -155,7 +155,7 @@ func setupRouter() *gin.Engine {
 			return
 		}
 
-		err = dg.MessageReactionAdd(discordChannelID, verifyBody.MessageID, ":partying_face:")
+		err = dg.MessageReactionAdd(discordChannelID, verifyBody.MessageID, "🎉")
 		if err != nil {
 			c.String(500, "Cannot React to message, but you good to go!")
 			c.Error(err)
@@ -203,7 +203,7 @@ func setupDiscord(token string) (*discordgo.Session, error) {
 
 func userJoin(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	_, err := s.ChannelMessageSendEmbed(discordChannelID, &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("Hello `@%s`, welcome to true e-logistics comunity :heart:", m.User.Username),
+		Title:       fmt.Sprintf("Hello <@%s>, welcome to true e-logistics comunity :heart:", m.User.Username),
 		Description: "Please introduce yourself by send a message to this channel",
 		Color:       3071986,
 		Fields: []*discordgo.MessageEmbedField{
