@@ -11,9 +11,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/mervick/aes-everywhere/go/aes256"
 
-	// "github.com/devit-tel/discord-bot-go/pkg/aes256"
+	"github.com/devit-tel/discord-bot-go/pkg/aes256"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -28,7 +27,7 @@ var (
 	discordToken         string
 	discordChannelID     string
 	discordServerID      string
-	passphrase           string
+	key                  []byte
 	serverAddress        string
 )
 
@@ -76,7 +75,7 @@ func setupEnv() {
 	discordToken = getEnv("DISCORD_TOKEN", "")
 	discordChannelID = getEnv("DISCORD_CHANNEL_ID", "")
 	discordServerID = getEnv("DISCORD_SERVER_ID", "")
-	passphrase = getEnv("PASSPHRASE", "P4S$W0Rd")
+	key = []byte(getEnv("PASSPHRASE", "P4S$W0Rd"))
 	serverAddress = getEnv("SERVER_ADDRESS", ":8080")
 }
 
@@ -98,7 +97,7 @@ func setupRouter(address string) *gin.Engine {
 
 	r.GET("/verify/:secret", func(c *gin.Context) {
 		secret := c.Param("secret")
-		encrypted := aes256.Decrypt(secret, passphrase)
+		encrypted := aes256.Decrypt(key, secret)
 		var emailBody EmailBody
 
 		if err := json.Unmarshal([]byte(encrypted), &emailBody); err != nil {
@@ -172,7 +171,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		IssuedAt:    time.Now().Format("YY-MM-DD HH:mm:ss"),
 	})
 
-	secret := aes256.Encrypt(string(verifyBytes), passphrase)
+	secret := aes256.Encrypt(key, verifyBytes)
 
 	emailPayload :=
 		EmailPayload{
