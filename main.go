@@ -289,7 +289,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	verifyBytes, err := json.Marshal(VerifyBody{
 		UserID:      m.Author.ID,
 		RoleID:      roleID,
-		ProfileName: fmt.Sprintf("%s (%s)", profileName, email),
+		ProfileName: profileName,
 		IssuedAt:    time.Now().Format(time.RFC3339),
 		MessageID:   m.ID,
 	})
