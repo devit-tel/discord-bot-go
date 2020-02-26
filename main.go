@@ -291,7 +291,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		RoleID:      roleID,
 		ProfileName: profileName,
 		IssuedAt:    time.Now().Format(time.RFC3339),
-		MessageID:   m.ID,
+		MessageID:   m.Message.ID,
 	})
 
 	secret, err := aes256.Encrypt(key, verifyBytes)
