@@ -10,10 +10,10 @@ import (
 )
 
 // Encrypt return base64 encrypted of given data
-func Encrypt(key []byte, plaintext []byte) string {
+func Encrypt(key []byte, plaintext []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	// The IV needs to be unique, but not secure. Therefore it's common to
@@ -21,13 +21,13 @@ func Encrypt(key []byte, plaintext []byte) string {
 	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
+		return "", err
 	}
 
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[aes.BlockSize:], plaintext)
 
-	return base64.URLEncoding.EncodeToString(ciphertext)
+	return base64.URLEncoding.EncodeToString(ciphertext), nil
 }
 
 // Decrypt from base64 to decrypted string
