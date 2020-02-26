@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ var (
 	discordServerID      string
 	key                  []byte
 	serverAddress        string
+	emailRegexp          string
 )
 
 var dg *discordgo.Session
@@ -84,6 +86,7 @@ func setupEnv() {
 	discordServerID = getEnv("DISCORD_SERVER_ID", "")
 	key = []byte(getEnv("PASSPHRASE", "P4S$W0Rd_Th41_5i2e_32_by7E_long!"))[:32]
 	serverAddress = getEnv("SERVER_ADDRESS", ":8080")
+	emailRegexp = getEnv("EMAIL_REGEXP", "(?i)^[0-9a-z_\-]{1,64}@[a-z]{1,64}.[0-9a-z]{1.3}")
 }
 
 func getEnv(key string, defaultValue string) string {
@@ -256,6 +259,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	profileName := strings.TrimSpace(splitedContent[0])
 	roleName := strings.TrimSpace(splitedContent[1])
 	email := strings.TrimSpace(splitedContent[2])
+
+	matched, err := regexp.Match(emailRegexp, []byte(email))
+	if (err != nil) {
+		log.Println(err)
+		return
+	}
+
+	if matched != true {
+		_, err := s.ChannelMessageSend(m.ChannelID, "Please process with internal email")
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
 
 	guildRoles, err := s.GuildRoles(discordServerID)
 	if err != nil {
