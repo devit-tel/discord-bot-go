@@ -200,7 +200,7 @@ func setupDiscord(token string) (*discordgo.Session, error) {
 
 func userJoin(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	_, err := s.ChannelMessageSendEmbed(discordChannelID, &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("Hello `%s`, welcome to true e-logistics comunity :heart:", m.User.Username),
+		Title:       fmt.Sprintf("Hello `@%s`, welcome to true e-logistics comunity :heart:", m.User.Username),
 		Description: "Please introduce yourself by send a message to this channel",
 		Color:       3071986,
 		Fields: []*discordgo.MessageEmbedField{
@@ -214,7 +214,7 @@ func userJoin(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 			},
 			{
 				Name:  "Example",
-				Value: "```Tod, Research, tossaporn_tem@true-e-logistics.com``",
+				Value: "```Tod, Research, tossaporn_tem@true-e-logistics.com```",
 			}},
 	})
 
@@ -270,8 +270,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	verifyBytes, err := json.Marshal(VerifyBody{
-		ProfileName: fmt.Sprintf("%s (%s)", profileName, email),
+		UserID:      m.Author.ID,
 		RoleID:      roleID,
+		ProfileName: fmt.Sprintf("%s (%s)", profileName, email),
 		IssuedAt:    time.Now().Format(time.RFC3339),
 		MessageID:   m.ID,
 	})
