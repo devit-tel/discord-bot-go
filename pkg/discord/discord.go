@@ -77,8 +77,8 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	return func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 		_, err := s.ChannelMessageSendEmbed(config.DiscordChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("Hello %s, welcome to true e-logistics comunity :heart:", m.User.Mention()),
-			Description: "Please introduce yourself by send a message to this channel",
+			Title:       fmt.Sprintf("Hello %s, welcome to true e-logistics comunity :heart:", m.User.Username),
+			Description: fmt.Sprintf("Please introduce yourself by send a message to this channel\n%s", m.User.Mention()),
 			Color:       3071986,
 			Fields: []*discordgo.MessageEmbedField{
 				{
