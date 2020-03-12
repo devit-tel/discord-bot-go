@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -64,6 +65,7 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 
 	dg.AddHandler(messageCreate(config))
 	dg.AddHandler(userJoin(config))
+	dg.AddHandler(disconnected)
 
 	if dg.Open(); err != nil {
 		return nil, err
@@ -72,6 +74,10 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 	fmt.Println("Bot is now running.")
 
 	return dg, nil
+}
+
+func disconnected(s *discordgo.Session, m *discordgo.Disconnect) {
+	os.Exit(2)
 }
 
 func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {

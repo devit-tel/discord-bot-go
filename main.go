@@ -37,7 +37,6 @@ func main() {
 	}
 
 	r := server.SetupServer(key, server.DiscordConfig{
-
 		Session:          session,
 		DiscordChannelID: discordChannelID,
 		DiscordServerID:  discordServerID,
