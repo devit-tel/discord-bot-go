@@ -37,13 +37,15 @@ func main() {
 	}
 
 	r := server.SetupServer(key, server.DiscordConfig{
-
 		Session:          session,
 		DiscordChannelID: discordChannelID,
 		DiscordServerID:  discordServerID,
 	})
 
-	r.Run(serverAddress)
+	err = r.Run(serverAddress)
+	if err != nil {
+		log.Panicln(err)
+	}
 }
 
 func setupEnv() {

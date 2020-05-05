@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/devit-tel/discord-bot-go/pkg/aes256"
 )
 
@@ -64,14 +66,20 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 
 	dg.AddHandler(messageCreate(config))
 	dg.AddHandler(userJoin(config))
+	dg.AddHandler(botDisconnect)
 
-	if dg.Open(); err != nil {
+	if err = dg.Open(); err != nil {
 		return nil, err
 	}
 
 	fmt.Println("Bot is now running.")
 
 	return dg, nil
+}
+
+func botDisconnect(_ *discordgo.Session, m *discordgo.Disconnect) {
+	fmt.Println(m)
+	os.Exit(69)
 }
 
 func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
@@ -86,8 +94,18 @@ func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMember
 					Value: "```Nickname, Role Name, email@true-e-logistics.com```",
 				},
 				{
-					Name:  "Role ID",
-					Value: "```md\n1. Admin\n2. Designer\n3. Developer\n4. Manager\n5. Mobile\n6. Research\n7. Sale\n8. Support\n9. Tester```",
+					Name: "Role ID",
+					Value: "```md" +
+						`- Admin
+- Designer
+- Developer
+- HR
+- Manager
+- Mobile
+- Research
+- Sale
+- Support
+- Tester` + "```",
 				},
 				{
 					Name:  "Example",
@@ -112,9 +130,9 @@ func messageCreate(config Config) func(s *discordgo.Session, m *discordgo.Messag
 			return
 		}
 
-		splitedContent := strings.Split(m.Content, ",")
+		splitContent := strings.Split(m.Content, ",")
 
-		if l := len(splitedContent); l < 3 {
+		if l := len(splitContent); l < 3 {
 			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nMessage must be in the format \"%s\"\n%s", m.Content, contentFormat, m.Author.Mention()))
 			if err != nil {
 				log.Println(err)
@@ -122,9 +140,9 @@ func messageCreate(config Config) func(s *discordgo.Session, m *discordgo.Messag
 			return
 		}
 
-		profileName := strings.TrimSpace(splitedContent[0])
-		roleName := strings.TrimSpace(splitedContent[1])
-		email := strings.TrimSpace(splitedContent[2])
+		profileName := strings.TrimSpace(splitContent[0])
+		roleName := strings.TrimSpace(splitContent[1])
+		email := strings.TrimSpace(splitContent[2])
 
 		matched, err := regexp.Match(config.AllowedEmailRegexp, []byte(email))
 		if err != nil {
