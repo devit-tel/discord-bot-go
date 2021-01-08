@@ -84,7 +84,17 @@ func botDisconnect(_ *discordgo.Session, m *discordgo.Disconnect) {
 
 func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	return func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
-		_, err := s.ChannelMessageSendEmbed(config.DiscordChannelID, &discordgo.MessageEmbed{
+		guildRoles, err := s.GuildRoles(config.DiscordServerID)
+		if err != nil {
+			log.Println(err)
+		}
+
+		rs := "\n"
+		for _, r := range guildRoles {
+			rs += fmt.Sprintf(" - %s\n", r.Name)
+		}
+
+		_, err = s.ChannelMessageSendEmbed(config.DiscordChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("Hello %s, welcome to true e-logistics comunity :heart:", m.User.Username),
 			Description: fmt.Sprintf("Please introduce yourself by send a message to this channel\n%s", m.User.Mention()),
 			Color:       3071986,
@@ -94,18 +104,8 @@ func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMember
 					Value: "```Nickname, Role Name, email@true-e-logistics.com```",
 				},
 				{
-					Name: "Role ID",
-					Value: "```md" +
-						`- Admin
-- Designer
-- Developer
-- HR
-- Manager
-- Mobile
-- Research
-- Sale
-- Support
-- Tester` + "```",
+					Name:  "Role Name",
+					Value: fmt.Sprintf("```md%s```", rs),
 				},
 				{
 					Name:  "Example",
@@ -126,7 +126,7 @@ func messageCreate(config Config) func(s *discordgo.Session, m *discordgo.Messag
 		}
 
 		if m.GuildID != config.DiscordServerID {
-			log.Println("Wirdo talking to me, help!!", m.Author.Username, m.Author.Email, m.Content)
+			log.Println("Weirdo talking to me, help!!", m.Author.Username, m.Author.Email, m.Content)
 			return
 		}
 
@@ -227,7 +227,7 @@ func findRoleIDByName(name string, roles []*discordgo.Role) (string, error) {
 		}
 	}
 
-	return "", errors.New("Role not found")
+	return "", errors.New("role not found")
 }
 
 func sendEmail(emailPayload EmailPayload) error {
