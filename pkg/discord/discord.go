@@ -85,13 +85,13 @@ func botDisconnect(_ *discordgo.Session, m *discordgo.Disconnect) {
 func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	return func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 		guildRoles, err := s.GuildRoles(config.DiscordServerID)
+		rs := "\n"
 		if err != nil {
 			log.Println(err)
-		}
-
-		rs := "\n"
-		for _, r := range guildRoles {
-			rs += fmt.Sprintf(" - %s\n", r.Name)
+		} else {
+			for _, r := range guildRoles {
+				rs += fmt.Sprintf(" - %s\n", r.Name)
+			}
 		}
 
 		_, err = s.ChannelMessageSendEmbed(config.DiscordChannelID, &discordgo.MessageEmbed{
