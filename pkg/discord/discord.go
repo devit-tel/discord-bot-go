@@ -72,6 +72,34 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 		return nil, err
 	}
 
+	fmt.Println("Setting up roles")
+
+	guildRoles, err := dg.GuildRoles(config.DiscordServerID)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for _, r := range guildRoles {
+		if r.Managed {
+			// skip Bot's roles
+		} else if match, _ := regexp.MatchString("^\\[squad].+", r.Name); match == true {
+			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xffc764, false, 1024, true)
+			if err != nil {
+				log.Println(err, r)
+			}
+		} else if match, _ := regexp.MatchString("^\\[gang].+", r.Name); match == true {
+			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xff577f, false, 1024, true)
+			if err != nil {
+				log.Println(err, r)
+			}
+		} else {
+			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0x00af91, true, 1177943745, true)
+			if err != nil {
+				log.Println(err, r)
+			}
+		}
+	}
+
 	fmt.Println("Bot is now running.")
 
 	return dg, nil
