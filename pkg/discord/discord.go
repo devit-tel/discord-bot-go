@@ -77,46 +77,49 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 		return nil, err
 	}
 
-	fmt.Println("Setting up roles")
+	go func() {
+		fmt.Println("Setting up roles")
 
-	guildRoles, err := dg.GuildRoles(config.DiscordServerID)
-	if err != nil {
-		log.Println(err)
-	}
+		guildRoles, err := dg.GuildRoles(config.DiscordServerID)
+		if err != nil {
+			log.Println(err)
+		}
 
-	for _, r := range guildRoles {
-		if r.Managed {
-			// skip Bot's roles
-		} else if r.Name == "@everyone" {
-			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xdddddd, false, 0, true)
-			if err != nil {
-				log.Println(err, r)
+		for _, r := range guildRoles {
+			if r.Managed {
+				// skip Bot's roles
+			} else if r.Name == "@everyone" {
+				_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xdddddd, false, 0, true)
+				if err != nil {
+					log.Println(err, r)
+				} else {
+					log.Printf("Setup role %s with permission %d", r.Name, 1024)
+				}
+			} else if match, _ := regexp.MatchString("(?i)^\\[squad].+", r.Name); match == true {
+				_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xffc764, false, 1024, true)
+				if err != nil {
+					log.Println(err, r)
+				} else {
+					log.Printf("Setup role %s with permission %d", r.Name, 1024)
+				}
+			} else if match, _ := regexp.MatchString("(?i)^\\[gang].+", r.Name); match == true {
+				_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xff577f, false, 1024, true)
+				if err != nil {
+					log.Println(err, r)
+				} else {
+					log.Printf("Setup role %s with permission %d", r.Name, 1024)
+				}
 			} else {
-				log.Printf("Setup role %s with permission %d", r.Name, 1024)
-			}
-		} else if match, _ := regexp.MatchString("(?i)^\\[squad].+", r.Name); match == true {
-			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xffc764, false, 1024, true)
-			if err != nil {
-				log.Println(err, r)
-			} else {
-				log.Printf("Setup role %s with permission %d", r.Name, 1024)
-			}
-		} else if match, _ := regexp.MatchString("(?i)^\\[gang].+", r.Name); match == true {
-			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xff577f, false, 1024, true)
-			if err != nil {
-				log.Println(err, r)
-			} else {
-				log.Printf("Setup role %s with permission %d", r.Name, 1024)
-			}
-		} else {
-			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0x00af91, true, 1177943745, true)
-			if err != nil {
-				log.Println(err, r)
-			} else {
-				log.Printf("Setup role %s with permission %d", r.Name, 1177943745)
+				_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0x00af91, true, 1177943745, true)
+				if err != nil {
+					log.Println(err, r)
+				} else {
+					log.Printf("Setup role %s with permission %d", r.Name, 1177943745)
+				}
 			}
 		}
-	}
+
+	}()
 
 	fmt.Println("Bot is now running.")
 
