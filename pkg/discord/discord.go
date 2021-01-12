@@ -3,7 +3,6 @@ package discord
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/devit-tel/discord-bot-go/pkg/aes256"
+	"github.com/hbakhtiyor/strsim"
 )
 
 const (
@@ -64,8 +64,8 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 		return nil, err
 	}
 
-	dg.AddHandler(messageCreate(config))
-	dg.AddHandler(userJoin(config))
+	dg.AddHandler(config.messageCreate)
+	dg.AddHandler(config.userJoin)
 	dg.AddHandler(botDisconnect)
 
 	if err = dg.Open(); err != nil {
@@ -82,20 +82,33 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 	for _, r := range guildRoles {
 		if r.Managed {
 			// skip Bot's roles
-		} else if match, _ := regexp.MatchString("^\\[squad].+", r.Name); match == true {
+		} else if r.Name == "@everyone" {
+			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xdddddd, false, 0, true)
+			if err != nil {
+				log.Println(err, r)
+			} else {
+				log.Printf("Setup role %s with permission %d", r.Name, 1024)
+			}
+		} else if match, _ := regexp.MatchString("(?i)^\\[squad].+", r.Name); match == true {
 			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xffc764, false, 1024, true)
 			if err != nil {
 				log.Println(err, r)
+			} else {
+				log.Printf("Setup role %s with permission %d", r.Name, 1024)
 			}
-		} else if match, _ := regexp.MatchString("^\\[gang].+", r.Name); match == true {
+		} else if match, _ := regexp.MatchString("(?i)^\\[gang].+", r.Name); match == true {
 			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0xff577f, false, 1024, true)
 			if err != nil {
 				log.Println(err, r)
+			} else {
+				log.Printf("Setup role %s with permission %d", r.Name, 1024)
 			}
 		} else {
 			_, err = dg.GuildRoleEdit(config.DiscordServerID, r.ID, r.Name, 0x00af91, true, 1177943745, true)
 			if err != nil {
 				log.Println(err, r)
+			} else {
+				log.Printf("Setup role %s with permission %d", r.Name, 1177943745)
 			}
 		}
 	}
@@ -110,152 +123,169 @@ func botDisconnect(_ *discordgo.Session, m *discordgo.Disconnect) {
 	os.Exit(69)
 }
 
-func userJoin(config Config) func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
-	return func(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
-		guildRoles, err := s.GuildRoles(config.DiscordServerID)
-		rs := "\n"
-		if err != nil {
-			log.Println(err)
-		} else {
-			for _, r := range guildRoles {
-				rs += fmt.Sprintf(" - %s\n", r.Name)
-			}
-		}
+func (config *Config) userJoin(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
+	log.Println("a")
+	t, err := config.getTemplateMessage(fmt.Sprintf("Hello %s, welcome to true e-logistics comunity :heart:", m.User.Username), s, m.User)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		_, err = s.ChannelMessageSendEmbed(config.DiscordChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("Hello %s, welcome to true e-logistics comunity :heart:", m.User.Username),
-			Description: fmt.Sprintf("Please introduce yourself by send a message to this channel\n%s", m.User.Mention()),
-			Color:       3071986,
-			Fields: []*discordgo.MessageEmbedField{
-				{
-					Name:  "Format",
-					Value: "```Nickname, Role Name, email@true-e-logistics.com```",
-				},
-				{
-					Name:  "Role Name",
-					Value: fmt.Sprintf("```md%s```", rs),
-				},
-				{
-					Name:  "Example",
-					Value: "```Tod, Research, tossaporn_tem@true-e-logistics.com```",
-				}},
-		})
+	_, err = s.ChannelMessageSendEmbed(config.DiscordChannelID, t)
 
-		if err != nil {
-			log.Println(err)
-		}
+	if err != nil {
+		log.Println(err)
 	}
 }
 
-func messageCreate(config Config) func(s *discordgo.Session, m *discordgo.MessageCreate) {
-	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		if m.Author.ID == s.State.User.ID || m.ChannelID != config.DiscordChannelID {
-			return
-		}
+func (config *Config) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.Author.ID == s.State.User.ID || m.ChannelID != config.DiscordChannelID {
+		return
+	}
 
-		if m.GuildID != config.DiscordServerID {
-			log.Println("Weirdo talking to me, help!!", m.Author.Username, m.Author.Email, m.Content)
-			return
-		}
+	if m.GuildID != config.DiscordServerID {
+		log.Println("Weirdo talking to me, help!!", m.Author.Username, m.Author.Email, m.Content)
+		return
+	}
 
-		splitContent := strings.Split(m.Content, ",")
+	splitContent := strings.Split(m.Content, ",")
 
-		if l := len(splitContent); l < 3 {
-			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nMessage must be in the format \"%s\"\n%s", m.Content, contentFormat, m.Author.Mention()))
-			if err != nil {
-				log.Println(err)
-			}
-			return
-		}
+	if l := len(splitContent); l < 3 {
 
-		profileName := strings.TrimSpace(splitContent[0])
-		roleName := strings.TrimSpace(splitContent[1])
-		email := strings.TrimSpace(splitContent[2])
-
-		matched, err := regexp.Match(config.AllowedEmailRegexp, []byte(email))
-		if err != nil {
-			log.Println(err)
-			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nOop something went wrong\n%s", m.Content, m.Author.Mention()))
-			if err != nil {
-				log.Println(err)
-			}
-			return
-		}
-
-		if matched != true {
-			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nPlease process with internal email\n%s", m.Content, m.Author.Mention()))
-			if err != nil {
-				log.Println(err)
-			}
-			return
-		}
-
-		guildRoles, err := s.GuildRoles(config.DiscordServerID)
-		if err != nil {
-			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nOop something went wrong\n%s", m.Content, m.Author.Mention()))
-			log.Println(err)
-			return
-		}
-
-		roleID, err := findRoleIDByName(roleName, guildRoles)
-		if err != nil {
-			log.Println(err)
-
-			_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\n%s\n%s", m.Content, err, m.Author.Mention()))
-			if err != nil {
-				log.Println(err)
-			}
-			return
-		}
-
-		verifyBytes, err := json.Marshal(VerifyBody{
-			UserID:      m.Author.ID,
-			RoleID:      roleID,
-			ProfileName: profileName,
-			IssuedAt:    time.Now().Format(time.RFC3339),
-			MessageID:   m.Message.ID,
-		})
-
-		secret, err := aes256.Encrypt(config.Key, verifyBytes)
+		t, err := config.getTemplateMessage(fmt.Sprintf("Hello %s", m.Author.Username), s, m.Author)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		emailPayload :=
-			EmailPayload{
-				EmailServiceURL: config.EmailServiceURL,
-				Receiver:        email,
-				Sender:          "do-not-reply@mail.service.drivs.io",
-				Subject:         "Verify email for discord channel",
-				Data: EmailBody{
-					DiscordName: m.Author.Username,
-					VerifyLink:  fmt.Sprintf("%s/verify/%s", config.VerifyServiceBaseURL, secret),
-					ProfileName: profileName,
-					Role:        roleName,
-				},
-			}
-
-		if err := sendEmail(emailPayload); err != nil {
-			log.Println(err)
-			return
-		}
-
-		_, err = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Verify link sent to your email (%s)\nLink will be expired in 5 minute\n%s", email, m.Author.Mention()))
+		_, err = s.ChannelMessageSendEmbed(config.DiscordChannelID, t)
 		if err != nil {
 			log.Println(err)
 		}
+		return
+	}
+
+	profileName := strings.TrimSpace(splitContent[0])
+	roleName := strings.TrimSpace(splitContent[1])
+	email := strings.TrimSpace(splitContent[2])
+
+	matched, err := regexp.Match(config.AllowedEmailRegexp, []byte(email))
+	if err != nil {
+		log.Println(err)
+		_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nOop something went wrong\n%s", m.Content, m.Author.Mention()))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
+	if matched != true {
+		_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nPlease process with internal email\n%s", m.Content, m.Author.Mention()))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
+	guildRoles, err := s.GuildRoles(config.DiscordServerID)
+	if err != nil {
+		_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\nOop something went wrong\n%s", m.Content, m.Author.Mention()))
+		log.Println(err)
+		return
+	}
+
+	role, _, err := findRoleByName(roleName, guildRoles)
+	if err != nil {
+		log.Println(err)
+		_, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("> %s\n%s\n%s", m.Content, err, m.Author.Mention()))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
+	verifyBytes, err := json.Marshal(VerifyBody{
+		UserID:      m.Author.ID,
+		RoleID:      role.ID,
+		ProfileName: profileName,
+		IssuedAt:    time.Now().Format(time.RFC3339),
+		MessageID:   m.Message.ID,
+	})
+
+	secret, err := aes256.Encrypt(config.Key, verifyBytes)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	emailPayload :=
+		EmailPayload{
+			EmailServiceURL: config.EmailServiceURL,
+			Receiver:        email,
+			Sender:          "do-not-reply@mail.service.drivs.io",
+			Subject:         "Verify email for discord channel",
+			Data: EmailBody{
+				DiscordName: m.Author.Username,
+				VerifyLink:  fmt.Sprintf("%s/verify/%s", config.VerifyServiceBaseURL, secret),
+				ProfileName: profileName,
+				Role:        role.Name,
+			},
+		}
+
+	if err := sendEmail(emailPayload); err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("`%s`:`%s`\nVerify link sent to your email (`%s`)\nLink will be expired in 5 minute\n%s", profileName, role.Name, email, m.Author.Mention()))
+	if err != nil {
+		log.Println(err)
 	}
 }
 
-func findRoleIDByName(name string, roles []*discordgo.Role) (string, error) {
-	for _, r := range roles {
-		if strings.ToLower(r.Name) == strings.ToLower(name) {
-			return r.ID, nil
-		}
+func (config *Config) getTemplateMessage(title string, s *discordgo.Session, m *discordgo.User) (*discordgo.MessageEmbed, error) {
+	guildRoles, err := s.GuildRoles(config.DiscordServerID)
+	rs := "\n"
+	if err != nil {
+		return nil, err
 	}
 
-	return "", errors.New("role not found")
+	for _, r := range guildRoles {
+		rs += fmt.Sprintf(" - %s\n", r.Name)
+	}
+
+	return &discordgo.MessageEmbed{
+		Title:       title,
+		Description: fmt.Sprintf("Please introduce yourself by send a message to this channel\n%s", m.Mention()),
+		Color:       3071986,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:  "Format",
+				Value: "```Nickname, Role Name, email@true-e-logistics.com```",
+			},
+			{
+				Name:  "Role Name",
+				Value: fmt.Sprintf("```markdown%s```", rs),
+			},
+			{
+				Name:  "Example",
+				Value: "```Tod, Research, tossaporn_tem@true-e-logistics.com```",
+			}},
+	}, nil
+}
+
+func findRoleByName(name string, roles []*discordgo.Role) (*discordgo.Role, float64, error) {
+	rn := make([]string, len(roles))
+	for i, r := range roles {
+		rn[i] = r.Name
+	}
+
+	matches, err := strsim.FindBestMatch(name, rn)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return roles[matches.BestMatchIndex], matches.BestMatch.Score, nil
 }
 
 func sendEmail(emailPayload EmailPayload) error {
