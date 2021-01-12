@@ -64,6 +64,11 @@ func SetupDiscord(config Config, token string) (*discordgo.Session, error) {
 		return nil, err
 	}
 
+	st, _ := dg.GuildInvites(config.DiscordServerID)
+	for _, inv := range st {
+		fmt.Println(inv.Code, inv.Inviter.Username)
+	}
+
 	dg.AddHandler(config.messageCreate)
 	dg.AddHandler(config.userJoin)
 	dg.AddHandler(botDisconnect)
